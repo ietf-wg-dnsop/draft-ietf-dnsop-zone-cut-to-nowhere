@@ -23,8 +23,8 @@ venue:
   type: "Working Group"
   mail: "dnsop@ietf.org"
   arch: "https://mailarchive.ietf.org/arch/browse/dnsop/"
-  github: "ableyjoe/draft-jabley-dnsop-zone-cut-to-nowhere"
-  latest: "https://ableyjoe.github.io/draft-jabley-dnsop-zone-cut-to-nowhere/draft-jabley-dnsop-zone-cut-to-nowhere.html"
+  github: "ietf-wg-dnsop/draft-ietf-dnsop-zone-cut-to-nowhere"
+  latest: "https://ietf-wg-dnsop.github.io/draft-ietf-dnsop-zone-cut-to-nowhere/draft-ietf-dnsop-zone-cut-to-nowhere.html"
 
 author:
  -
