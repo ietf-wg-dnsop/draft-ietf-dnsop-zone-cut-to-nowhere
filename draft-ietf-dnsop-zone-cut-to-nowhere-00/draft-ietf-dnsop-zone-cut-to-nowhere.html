@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Signalling a Zone Cut to Nowhere in the DNS</title>
+<meta content="Joe Abley" name="author">
+<meta content="Wes Hardaker" name="author">
+<meta content="Warren Kumari" name="author">
+<meta content='
+       This document defines a standard mechanism to signal the existence of a DNS
+zone cut without specifying authoritative nameservers for the delegated child
+zone. This "zone cut to nowhere" is particularly useful in split-horizon
+environments, allowing parent zones to explicitly signal that a child zone
+exists but is only resolvable within a private namespace. 
+    ' name="description">
+<meta content="xml2rfc 3.34.1" name="generator">
+<meta content="DNS" name="keyword">
+<meta content="DNSSEC" name="keyword">
+<meta content="zone cut" name="keyword">
+<meta content="delegation" name="keyword">
+<meta content="referral" name="keyword">
+<meta content="draft-ietf-dnsop-zone-cut-to-nowhere-latest" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.1
+    Python 3.14.7
+    ConfigArgParse 1.7.7
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.11.10
+    pycountry 24.6.1
+    PyYAML 6.0.3
+    requests 2.33.1
+    wcwidth 0.8.4
+-->
+<link href="draft-ietf-dnsop-zone-cut-to-nowhere.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Lora SemiBold'), local('Lora-SemiBold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-semibold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  --font-mono: 'Oxygen Mono', monospace;
+  --font-title: "Sofia Sans Semi Condensed", sans-serif;
+  scrollbar-color: #bbb #eee;
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+section {
+  clear: both;
+}
+.section-number {
+  padding-right: 0.5em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 680;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+h1 {
+  &#title {
+    font-size: 32px;
+    line-height: 40px;
+    clear: both;
+    margin: 1.5em 0 0.2em;
+  }
+  &#rfcnum {
+    margin: 1.5em 0 0.2em;
+    & + h1#title {
+      margin: 0.2em 0;
+    }
+  }
+}
+
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+#abstract+p {
+  font-size: 18px;
+  line-height: 24px;
+  & code, & samp, & tt {
+    font-size: 16px;
+    line-height: 0;
+  }
+}
+
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    margin: 0;
+    float: right;
+    clear: both;
+  }
+  & > *:nth-child(2) {
+    clear: both;
+    display: block;
+    border: none;
+  }
+}
+svg {
+  display: block;
+  /* font-family isn't space-separated, but =~ will have to do */
+  &[font-family~="monospace" i], & [font-family~="monospace" i] {
+    font-family: var(--font-mono);
+  }
+}
+.alignCenter {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+       support flexbox yet.
+    */
+    display: table;
+    margin: 0 auto;
+  }
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+  & :is(ol, ul) {
+    margin-left: 1em;
+  }
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+  & li {
+    margin-top: 0.5em;
+  }
+}
+:is(ul, ol).compact, .ulCompact, .olCompact {
+  margin: 0 0 0 2em;
+  & li {
+    margin: 0;
+    & :first-child { margin-top: 0; }
+    & :last-child { margin-bottom: 0; }
+  }
+}
+
+/* definition lists */
+dl {
+  clear: left;
+  --indent: 3ch;
+  /* --indent: attr(indent ch); not supported in any browser, but we can dream */
+  &.olPercent {
+    --indent: 5ch;
+    & > dt {
+      min-width: calc(var(--indent) - 2ch);
+      float: none;
+    }
+  }
+
+  dl > dd > & {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+
+  &:not(.dlNewline) > dt {
+    float: left;
+    margin-right: 2ch;
+    min-width: 8ch;
+  }
+  & > dd {
+    margin-bottom: .8em;
+    margin-left: var(--indent) !important; /* stupid element overrides */
+    min-height: 2ex;
+  }
+}
+:is(dl.compact, .dlCompact) > dd {
+  margin-bottom: 0;
+  & > :is(:first-child, .break:first-child + *) {
+    margin-top: 0;
+  }
+  & > :is(:last-child) {
+    margin-bottom: 0;
+  }
+}
+:is(dd, span).break {
+  display: none;
+}
+
+/* links */
+a {
+  text-decoration: none;
+  &[href] {
+    color: var(--link-color);
+    &:hover { text-decoration: underline; }
+    &.selfRef {
+      color: var(--text-color);
+      &:hover {
+        text-decoration: none;
+        background-color: var(--highlight-color);
+      }
+    }
+  }
+}
+.iref + a[href].internal {
+  color: var(--text-color);
+}
+a.xref:is(.cite, .auto), :is(#status-of-memo, #copyright) a {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px var(--font-mono);
+}
+tt, code {
+  /* changing the font for inline elements leads to different ascender
+     and descender heights; as we want to retain baseline alignment,
+     remove leading to avoid altering the final height of lines
+     note: this fails if these blocks take an entire line,
+     a different solution would be great */
+  line-height: 0;
+}
+:is(h1, h2, h3, h4, h5, h6) :is(tt, code) {
+  font-size: 84%;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+  & blockquote {
+    margin: 0.8em 0.4em 0.4em;
+  }
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+  caption-side: bottom;
+}
+@media screen {
+  /* Auto-collapse boilerplate. */
+  :is(#status-of-memo, #copyright) {
+    & p {
+      margin: -2px 0;
+      max-height: 0;
+      transition: max-height 2s ease, margin 0.5s ease 0.5s;
+      overflow: hidden;
+    }
+    &:hover p,
+    & h2:target ~ p {
+      margin: 0.5em 0;
+      max-height: 500px;
+      overflow: auto;
+    }
+  }
+  pre, svg {
+    display: inline-block;
+    /* In the horizontal direction, sometimes people make over-sized figures.
+       Scrollbars for those is therefore necessary: auto adds them as necessary..
+       In the vertical direction, the line-height can combine with the font
+       asender/descender height to produce scrollbars: hidden avoids that. */
+    overflow: auto hidden;
+  }
+  pre {
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  svg {
+    max-width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  :is(pre, svg) + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  margin: 1em 0;
+  border-left: 2px var(--pilcrow-strong) solid;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  &.right { margin-left: auto; }
+  &.center { margin-left: auto; margin-right: auto; }
+  &.left { margin-right: auto; }
+  & .text-left { text-align: left; }
+  & .text-center { text-align: center; }
+  & .text-right { text-align: right; }
+  & caption {
+    margin: 0;
+    padding: 3px 0 3px 1em;
+  }
+  & p { margin: 0; }
+}
+
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+:is(tr:nth-child(2n), thead+tbody > tr:nth-child(2n+1)) > td {
+  background-color: var(--background-color);
+}
+:is(tr:nth-child(2n+1), thead+tbody > tr:nth-child(2n)) > td {
+  background-color: var(--highlight-color);
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+  &[href] {
+    color: var(--pilcrow-weak);
+    &:hover { text-decoration: none; }
+  }
+  @media not print {
+    :hover > &, &:focus {
+      opacity: 1;
+    }
+    &[href]:hover {
+      color: var(--pilcrow-strong);
+      background-color: transparent;
+    }
+  }
+  @media print {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--small-font-size);
+}
+.role {
+  font-variant: all-small-caps;
+}
+sub, sup {
+  line-height: 1;
+  font-size: 80%;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 15ch;
+  & dt {
+    width: var(--identifier-width);
+    min-width: var(--identifier-width);
+    clear: left;
+    float: left;
+    text-align: right;
+    margin-right: 1ch;
+  }
+  & dd {
+    margin: 0;
+    margin-left: calc(1em + var(--identifier-width)) !important;
+    min-width: 5em;
+  }
+  & .authors {
+    & .author {
+      display: inline-block;
+      margin-right: 1.5em;
+    }
+    & .org {
+      font-style: italic;
+    }
+  }
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+  & .prepared {
+    float: right;
+  }
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+
+  & nav {
+    & ul {
+      margin: 0 0.5em 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    & li {
+      line-height: 1.3em;
+      margin: 2px 0;
+      padding-left: 1.2em;
+      text-indent: -1.2em;
+    }
+  }
+  & a.xref {
+    white-space: normal;
+  }
+}
+
+.references {
+  & > dt {
+    text-align: right;
+    font-weight: bold;
+    min-width: 10ch;
+    margin-right: 1.5ch;
+    &:target::before {
+      content: "⇒";
+      margin: 0 10px 0 -25px;
+    }
+  }
+  & > dd {
+    margin-left: 12ch !important;
+    overflow: visible;
+    & .refInstance {
+      margin-bottom: 0.8em;
+    }
+    & .ascii {
+      margin-bottom: 0.25em;
+    }
+  }
+}
+
+#rfc\.index\.index + ul {
+  margin-left: 0;
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  max-width: 20em;
+  margin: 1em auto 1em 0;
+
+  & .nameRole {
+    font-weight: 700;
+    margin-left: 0;
+  }
+  & .label {
+    margin: 0.5em 0;
+  }
+  & .type {
+    display: none;
+  }
+  & .alternative-contact {
+    margin: 0.5em 0 0.25em 0;
+  }
+  & .non-ascii {
+    margin: 0 0 0 2em;
+  }
+  & div.left {
+    text-align: left;
+  }
+  & div.right {
+    text-align: right;
+  }
+}
+
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses {
+    & > section {
+      column-count: 2;
+      column-gap: 20px;
+    }
+    & > section > h2 {
+      column-span: all;
+    }
+    /* hack for break-inside: avoid-column */
+    & address {
+      display: inline-block;
+      break-inside: avoid-column;
+    }
+  }
+}
+
+/* Comments */
+.rfcEditorRemove {
+  & p:first-of-type {
+    font-style: italic;
+  }
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+
+@media screen {
+  #toc {
+    & nav {
+      font-family: var(--font-title);
+      font-weight: 360;
+      & > ul { margin-bottom: 2em; }
+      & ul {
+        margin: 0 0 0 4px;
+        & :is(p, li) {
+          margin: 2px 0;
+        }
+      }
+    }
+    & a.toplink {
+      float: right;
+    }
+  }
+}
+@media not screen {
+  #toc a.toplink {
+    display: none;
+  }
+}
+
+
+/* TOC layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 1px 0 0 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+    & h2 {
+      margin: 0;
+      padding: 2px 0 2px 6px;
+      padding-right: 1em;
+      font-size: 18px;
+      line-height: 24px;
+      min-width: 190px;
+      text-align: right;
+      background-color: #444;
+      color: white;
+      cursor: pointer;
+      &::before { /* css hamburger */
+        float: right;
+        position: relative;
+        width: 1em;
+        height: 1px;
+        left: -164px;
+        margin: 8px 0 0 0;
+        background: white none repeat scroll 0 0;
+        box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+        content: "";
+      }
+    }
+    & nav {
+      display: none;
+      background-color: var(--background-color);
+      padding: 0.5em 1em 1em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      height: calc(100vh - 48px);
+      border-left: 1px solid #ddd;
+    }
+    &.active {
+      opacity: 1;
+      & nav { display: block; }
+    }
+    /* Make the collapsed ToC header render white on gray also when it's a link */
+    & h2 a,
+    & h2 a:is(:link, :focus, :hover),
+    & a.toplink,
+    & a.toplink:hover {
+      color: white;
+      background-color: #444;
+      text-decoration: none;
+    }
+    & a.toplink {
+      margin: 2px 0.5em 0;
+    }
+  }
+}
+
+/* TOC layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+    & h2 {
+      margin: 0;
+      padding: 0.25em 1em 1em 0;
+    }
+    & nav {
+      display: block;
+      height: calc(90vh - 84px);
+      bottom: 0;
+      padding: 0.5em 0 2em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+    & a.toplink {
+      margin: 8px 0.5em 0;
+    }
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc {
+    page-break-before: always;
+    border-top: none;
+    padding-top: 0;
+  }
+  #n-introduction {
+    page-break-before: always;
+  }
+  figure, pre, .vcard {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  :is(h2, h3, h4, h5, h6)+*, dd {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Dark mode. */
+@media (prefers-color-scheme: dark) {
+:root {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+
+/* SVG Trick: a prefix match works because only black and white are allowed */
+svg {
+  & :is([stroke="black"], [stroke^="#000"]) {
+    stroke: var(--text-color);
+  }
+  & :is([stroke="white"], [stroke^="#fff"]) {
+    stroke: var(--background-color);
+  }
+  & :is([fill="black"], [fill^="#000"], :not([fill])) {
+    fill: var(--text-color);
+  }
+  & :is([fill="white"], [fill^="#fff"]) {
+    fill: var(--background-color);
+  }
+}
+</style>
+
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">Signalling a Zone Cut to Nowhere in the </td>
+<td class="right">September 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Abley, et al.</td>
+<td class="center">Expires 27 March 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Domain Name System Operations</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-ietf-dnsop-zone-cut-to-nowhere-latest</dd>
+<dt class="label-updates">Updates:</dt>
+<dd class="updates">
+<a href="https://www.rfc-editor.org/rfc/rfcRFC1035" class="eref">RFC1035</a> (if approved)</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-09-23" class="published">23 September 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Standards Track</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-03-27">27 March 2027</time></dd>
+<dt class="label-authors">Authors:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">J. Abley</div>
+<div class="org">Cloudflare</div>
+</div>
+<div class="author">
+      <div class="author-name">W. Hardaker</div>
+<div class="org">USC/ISI</div>
+</div>
+<div class="author">
+      <div class="author-name">W. Kumari</div>
+<div class="org">Google, Inc.</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Signalling a Zone Cut to Nowhere in the DNS</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document defines a standard mechanism to signal the existence of a DNS
+zone cut without specifying authoritative nameservers for the delegated child
+zone. This "zone cut to nowhere" is particularly useful in split-horizon
+environments, allowing parent zones to explicitly signal that a child zone
+exists but is only resolvable within a private namespace.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<section class="note rfcEditorRemove" id="section-note.1">
+      <h2 id="name-about-this-document">
+<a href="#name-about-this-document" class="section-name selfRef">About This Document</a>
+      </h2>
+<p id="section-note.1-1">This note is to be removed before publishing as an RFC.<a href="#section-note.1-1" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">
+        The latest revision of this draft can be found at <span><a href="https://ietf-wg-dnsop.github.io/draft-ietf-dnsop-zone-cut-to-nowhere/draft-ietf-dnsop-zone-cut-to-nowhere.html">https://ietf-wg-dnsop.github.io/draft-ietf-dnsop-zone-cut-to-nowhere/draft-ietf-dnsop-zone-cut-to-nowhere.html</a></span>.
+        Status information for this document may be found at <span><a href="https://datatracker.ietf.org/doc/draft-ietf-dnsop-zone-cut-to-nowhere/">https://datatracker.ietf.org/doc/draft-ietf-dnsop-zone-cut-to-nowhere/</a></span>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+<p id="section-note.1-3">
+        Discussion of this document takes place on the
+        Domain Name System Operations Working Group mailing list (<span><a href="mailto:dnsop@ietf.org">mailto:dnsop@ietf.org</a></span>),
+        which is archived at <span><a href="https://mailarchive.ietf.org/arch/browse/dnsop/">https://mailarchive.ietf.org/arch/browse/dnsop/</a></span>.
+        Subscribe at <span><a href="https://www.ietf.org/mailman/listinfo/dnsop/">https://www.ietf.org/mailman/listinfo/dnsop/</a></span>.<a href="#section-note.1-3" class="pilcrow">¶</a></p>
+<p id="section-note.1-4">Source for this draft and an issue tracker can be found at
+        <span><a href="https://github.com/ietf-wg-dnsop/draft-ietf-dnsop-zone-cut-to-nowhere">https://github.com/ietf-wg-dnsop/draft-ietf-dnsop-zone-cut-to-nowhere</a></span>.<a href="#section-note.1-4" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 27 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-conventions-and-definitions" class="internal xref">Conventions and Definitions</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1" class="keepWithNext"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-publishing-a-delegation-to-" class="internal xref">Publishing a Delegation to Nowhere</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-interpreting-a-referral-to-" class="internal xref">Interpreting a Referral to Nowhere</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-applicability" class="internal xref">Applicability</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-examples" class="internal xref">Examples</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1">
+                <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="auto internal xref">6.1</a>.  <a href="#name-internal-namespace-as-a-sub" class="internal xref">Internal Namespace as a Subdomain of a Public Domain</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2">
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-general-purpose-top-level-d" class="internal xref">General Purpose Top-Level Domain for Internal Namespaces</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-updates-to-rfc-1035" class="internal xref">Updates to RFC 1035</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-other-uses-of-the-empty-nam" class="internal xref">Other Uses of the Empty Name in the DNS</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-operational-considerations" class="internal xref">Operational Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.1">
+                <p id="section-toc.1-1.12.2.1.1"><a href="#section-12.1" class="auto internal xref">12.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2">
+                <p id="section-toc.1-1.12.2.2.1"><a href="#section-12.2" class="auto internal xref">12.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-experiments" class="internal xref">Experiments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#appendix-B" class="auto internal xref"></a><a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-authors-addresses" class="internal xref">Authors' Addresses</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">The DNS protocol, as originally specified in <span>[<a href="#RFC1034" class="cite xref">RFC1034</a>]</span> and
+<span>[<a href="#RFC1035" class="cite xref">RFC1035</a>]</span>, describes a single, global, hierarchical namespace
+that is separated into zones. The boundary between a parent zone
+and a child zone is indicated using a zone cut. Zone cuts are
+specified using specific resource records which are published within
+the parent and child zones; the parent-side resource records are
+revealed during DNS resolution by way of referral responses from
+nameservers.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">Private DNS namespaces also exist, and are commonly used in enterprise and
+corporate environments, where a portion of the namespace is only accessible
+within the organization, using internal DNS infrastructure. This is often
+referred to as "split" DNS. A user of a private network might be able to
+resolve names using local DNS infrastructure that are not visible to other
+users of other networks.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">When a device or application uses the DNS protocol to resolve both
+internal names and external names published in the global DNS
+namespace, ambiguity can result. For example, DNS responses from
+Internet-reachable nameservers might indicate that a particular
+name published in an internal namespace does not exist, while an
+internal nameserver might be configured to respond differently.
+Since mobile devices can attach to different networks and can cache
+DNS responses obtained from different namespaces, this ambiguity
+can cause issues. A DNSSEC-aware resolver on a mobile device
+might cache a signed, negative response from an external nameserver
+for a particular name and might treat a subsequent, positive response
+from an internal nameserver for the same name as bogus, preventing
+the response from being used by an application.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<p id="section-1-4">This document provides a means of explicitly signalling the existence of a zone
+cut in a namespace in circumstances where the child zone only exists in a
+different namespace from the parent. We refer to this type of zone cut as a
+"zone cut to nowhere" and introduce the corresponding terms "delegation to
+nowhere" and "referral to nowhere" in <a href="#definitions" class="auto internal xref">Section 2</a>.<a href="#section-1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="definitions">
+<section id="section-2">
+      <h2 id="name-conventions-and-definitions">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-conventions-and-definitions" class="section-name selfRef">Conventions and Definitions</a>
+      </h2>
+<p id="section-2-1">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>", "<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>",
+"<span class="bcp14">MAY</span>", and "<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as
+described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they
+appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
+<p id="section-2-2">This document uses DNS terminology as described in <span>[<a href="#RFC9499" class="cite xref">RFC9499</a>]</span>.
+Familiarity with terms defined in that document is assumed.<a href="#section-2-2" class="pilcrow">¶</a></p>
+<p id="section-2-3">This document also uses the following new terms:<a href="#section-2-3" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-2-4">
+<li id="section-2-4.1">
+          <p id="section-2-4.1.1">"Zone cut to nowhere" -- a zone cut where the parent zone
+and the child zone are provisioned in different namespaces. A zone
+cut to nowhere is a signal provided by the administrator of a parent
+zone that a child zone exists, but is not able to be used in the
+DNS namespace of the parent.<a href="#section-2-4.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-2-4.2">
+          <p id="section-2-4.2.1">"Delegation to nowhere" -- a delegation from a parent to
+a child across a zone cut to nowhere.<a href="#section-2-4.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-2-4.3">
+          <p id="section-2-4.3.1">"Referral to nowhere", "Referral response to nowhere" -- a DNS
+response received from a nameserver that reveals the existence
+of a delegation to nowhere.<a href="#section-2-4.3.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
+</section>
+</div>
+<div id="publishing-a-delegation-to-nowhere">
+<section id="section-3">
+      <h2 id="name-publishing-a-delegation-to-">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-publishing-a-delegation-to-" class="section-name selfRef">Publishing a Delegation to Nowhere</a>
+      </h2>
+<p id="section-3-1">A zone cut to nowhere is implemented in a parent zone using a single
+NS resource record with an empty target (an empty NSDNAME, in the
+parlance of <span>[<a href="#RFC1035" class="cite xref">RFC1035</a>]</span>). A zone cut to nowhere between the parent
+zone <code>EXAMPLE.ORG</code> and the child zone <code>DUCKLING.EXAMPLE.ORG</code> with
+a TTL of 3600 seconds would be described in zone file syntax as
+follows:<a href="#section-3-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3-2">
+<pre>
+        ; zone data published in an external nameserver
+
+        $ORIGIN EXAMPLE.ORG.
+
+        ; the zone DUCKLING.EXAMPLE.ORG exists, but in another
+        ; namespace
+
+        DUCKLING  3600  IN  NS  .
+</pre><a href="#section-3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3-3">A zone cut to nowhere may also be provisioned as a secure delegation.
+This allows a DNSSEC-aware consumer of a referral response to obtain
+and cache a DNSSEC trust anchor for the child zone, for use when
+it is able to receive a signed response from a nameserver that
+includes the child zone in its namespace.<a href="#section-3-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3-4">
+<pre>
+        $ORIGIN EXAMPLE.ORG.
+
+        ; the signed zone PUPPY.EXAMPLE.ORG exists,
+        ; but in another namespace
+
+        PUPPY  3600  IN  DS  [...]
+                         NS  .
+</pre><a href="#section-3-4" class="pilcrow">¶</a>
+</div>
+<p id="section-3-5">An NS RRSet in a parent zone which includes multiple NS resource
+records is not a delegation to nowhere, even if one of the NS
+resource records within the RRSet has an empty target.<a href="#section-3-5" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3-6">
+<pre>
+        KITTEN  3600  IN  NS  A.CAT-SERVERS.EXAMPLE.
+                          NS  B.CAT-SERVERS.EXAMPLE.
+                          NS  .                        ; unusual
+                          NS  C.CAT-SERVERS.EXAMPLE.
+</pre><a href="#section-3-6" class="pilcrow">¶</a>
+</div>
+<p id="section-3-7">This NS RRSet does not encode a delegation to nowhere, since other
+NS resource records exist in addition to the record with the empty
+target (marked with a comment as "unusual"). This configuration may
+have some other meaning in a different context, however, and is
+specifically not addressed by this specification.<a href="#section-3-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="interpreting-a-referral-to-nowhere">
+<section id="section-4">
+      <h2 id="name-interpreting-a-referral-to-">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-interpreting-a-referral-to-" class="section-name selfRef">Interpreting a Referral to Nowhere</a>
+      </h2>
+<p id="section-4-1">No special processing is necessary in order to interpret a referral
+response to nowhere.  Individual RRSets present in a referral
+response to nowhere can safely be interpreted and processed in an
+identical fashion to any other referral response where the authoritative
+servers for the child zone cannot themselves be resolved, and hence
+cannot be reached.<a href="#section-4-1" class="pilcrow">¶</a></p>
+<p id="section-4-2">{Editor's note (to be removed before publication): Please see
+<span>[<a href="#Hardaker2026" class="cite xref">Hardaker2026</a>]</span>, and the IEPG recording <span>[<a href="#IEPG-IETF125" class="cite xref">IEPG-IETF125</a>]</span>
+for real-world testing of this behavior.}<a href="#section-4-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="applicability">
+<section id="section-5">
+      <h2 id="name-applicability">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-applicability" class="section-name selfRef">Applicability</a>
+      </h2>
+<p id="section-5-1">When a child zone is known to exist in another namespace, and when
+that other namespace is intended for use with the DNS, a delegation
+to nowhere <span class="bcp14">MAY</span> be provisioned in the parent zone to signal that the
+child zone exists in some other namespace. In such circumstances
+the parent zone <span class="bcp14">MAY</span> be the root zone, or any other zone.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2">A secure delegation to nowhere <span class="bcp14">MAY</span> be provisioned if the keys used
+for signing in the child zone are known to the administrator of the
+parent zone. In the case where differently-signed (or unsigned)
+child zones are known to exist in different namespaces, a secure
+delegation <span class="bcp14">SHOULD NOT</span> be used.<a href="#section-5-2" class="pilcrow">¶</a></p>
+<p id="section-5-3">The use of a delegation to nowhere in this document is described
+for the IN class only. Use of this mechanism in other classes is
+not addressed by this specification.<a href="#section-5-3" class="pilcrow">¶</a></p>
+<p id="section-5-4">Name resolution protocols other than the DNS are also used by some
+systems, for names that are syntactically equivalent to domain names
+in the DNS. In some cases, names resolved by those non-DNS protocols
+are anchored in a specific domain that is consequently reserved for
+their use in the DNS, to avoid name collisions.  Examples of such
+reservations in the DNS are the <code>LOCAL</code> top-level domain reserved
+for use by Multicast DNS <span>[<a href="#RFC6762" class="cite xref">RFC6762</a>]</span> and the <code>ALT</code> top-level domain
+reserved use in general for non-DNS resolution protocols <span>[<a href="#RFC9476" class="cite xref">RFC9476</a>]</span>.
+Domains that are not intended for use with the DNS as their resolution
+protocol <span class="bcp14">SHOULD NOT</span> be provisioned in the DNS as delegations to
+nowhere, since there is no DNS namespace ambiguity that such a
+configuration could help with.<a href="#section-5-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="examples">
+<section id="section-6">
+      <h2 id="name-examples">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-examples" class="section-name selfRef">Examples</a>
+      </h2>
+<div id="internal-namespace-as-a-subdomain-of-a-public-domain">
+<section id="section-6.1">
+        <h3 id="name-internal-namespace-as-a-sub">
+<a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-internal-namespace-as-a-sub" class="section-name selfRef">Internal Namespace as a Subdomain of a Public Domain</a>
+        </h3>
+<p id="section-6.1-1">A company uses names within the <code>EXAMPLE.COM</code> domain both for
+internal services it provides to its employees and for public
+services that are made available to the general public over the
+Internet.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<p id="section-6.1-2">The company also provides certain services that are only available
+to users of devices attached to its internal network. Those services
+are named within the subdomain <code>CORP.EXAMPLE.COM</code>. The company does
+not wish those internal services to be visible to external users.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
+<p id="section-6.1-3">We say that the <code>EXAMPLE.COM</code> zone exists in the global DNS namespace
+and that the <code>CORP.EXAMPLE.COM</code> zone exists only in a private DNS
+namespace.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.1-4">The company publishes a <code>CORP.EXAMPLE.COM</code> zone on DNS nameservers
+attached to its internal network. The company configures the DNS
+resolvers used by devices attached to its internal network to be
+aware that the <code>CORP.EXAMPLE.COM</code> zone is served by those internal
+nameservers, such that queries sent from devices inside the company's
+network can resolve names in the <code>CORP.EXAMPLE.COM</code> domain.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6.1-5">
+<pre>
+        $ORIGIN CORP.EXAMPLE.COM.
+        ; internal zone only served in our internal network
+
+        @      3600  IN  SOA   [...]
+
+        ; the internal zone CORP.EXAMPLE.COM is served by the internal
+        ; nameservers NS1.CORP.EXAMPLE.COM and NS2.CORP.EXAMPLE.COM
+
+                     NS    NS1
+                     NS    NS2
+
+        NS1          A     198.51.100.37
+                     AAAA  2001:db8:2:1::2c
+
+        NS2          A     203.0.113.56
+        NS2          AAAA  2001:db8:2:3::2d
+
+        ; the internal intranet web server is INTRANET.CORP.EXAMPLE.COM
+
+        INTRANET     A     198.51.100.74
+                     AAAA  2001:db8:2:1::f8
+
+        ; the management address of an internal network device known
+        ; as BACKBONE-SW.CORP.EXAMPLE.COM
+
+        BACKBONE-SW  A     198.51.100.65
+</pre><a href="#section-6.1-5" class="pilcrow">¶</a>
+</div>
+<p id="section-6.1-6">The company publishes an <code>EXAMPLE.COM</code> zone on nameservers that are
+general reachable over the Internet -- that is, the nameservers are
+reachable and the <code>COM</code> zone returns referrals for the <code>EXAMPLE.COM</code>
+zone to those nameservers. The EXAMPLE.COM zone includes names that
+the company wants clients to be able to resolve regardless of what
+network they are connected to.<a href="#section-6.1-6" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6.1-7">
+<pre>
+        $ORIGIN EXAMPLE.COM.
+
+        ; the public zone EXAMPLE.COM is published to the Internet
+
+        @      3600  IN  SOA   [...]
+
+        ; the public zone EXAMPLE.COM is served by the nameservers
+        ; NS1.EXAMPLE.COM and NS2.EXAMPLE.COM which are reachable
+        ; over the Internet
+
+                     NS    NS1
+                     NS    NS2
+
+        ; Internet mail for EXAMPLE.COM is handled by the server
+        ; MAIL.EXAMPLE.COM
+
+                     MX    10 MAIL.EXAMPLE.COM.
+
+        ; The public nameservers NS1.EXAMPLE.COM and NS2.EXAMPLE.COM
+
+        NS1          A     192.0.2.25
+        NS1          AAAA  2001:db8:e0::2a
+
+        NS2          A     192.0.2.27
+        NS2          AAAA  2001:db8:e0::2b
+
+        ; MAIL.EXAMPLE.COM and WWW.EXAMPLE.COM are intended to be used
+        ; from anywhere, not just by internal clients, so they are
+        ; named in the global namespace
+
+        MAIL         A     192.0.2.41
+        MAIL         A     2001:db8:e0::f1
+
+        WWW          A     192.0.2.58
+        WWW          AAAA  2001:db8:e0::5e
+
+        ; CORP.EXAMPLE.COM is our internal namespace. Delegate the
+        ; corresponding zone to nowhere
+
+        CORP         NS    .
+</pre><a href="#section-6.1-7" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="general-purpose-top-level-domain-for-internal-namespaces">
+<section id="section-6.2">
+        <h3 id="name-general-purpose-top-level-d">
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-general-purpose-top-level-d" class="section-name selfRef">General Purpose Top-Level Domain for Internal Namespaces</a>
+        </h3>
+<p id="section-6.2-1">Suppose it has been decided that the top-level domain <code>INTERNAL</code> be
+reserved for use in private namespaces. The root zone of the global
+DNS is signed using DNSSEC <span>[<a href="#RFC4033" class="cite xref">RFC4033</a>]</span>; that is, DNSSEC-specific
+RRSets are published in the root zone that allow DNSSEC-aware
+resolvers to be sure with cryptographic certainty whether particular
+top-level domains exist in the public namespace.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<p id="section-6.2-2">A delegation to nowhere for the <code>INTERNAL</code> top-level domain in the
+root zone of the global DNS namespace would provide an unambiguous
+signal to resolvers that <code>INTERNAL</code> does exist in other namespaces.
+An insecure delegation to nowhere is appropriate in this example
+since there is no single trust anchor that could be used to provide
+a secure delegation to zones in multiple namespaces that have
+different, non-cooperating administrators.<a href="#section-6.2-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6.2-3">
+<pre>
+        $ORIGIN .
+
+        ; the INTERNAL top-level domain is delegated to nowhere, to
+        ; facilitate its use in private namespaces
+
+        INTERNAL  172800  IN  NS  .
+</pre><a href="#section-6.2-3" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="updates-to-rfc-1035">
+<section id="section-7">
+      <h2 id="name-updates-to-rfc-1035">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-updates-to-rfc-1035" class="section-name selfRef">Updates to RFC 1035</a>
+      </h2>
+<p id="section-7-1">This document updates <span><a href="https://rfc-editor.org/rfc/rfc1035#section-3.3.11" class="relref">Section 3.3.11</a> of [<a href="#RFC1035" class="cite xref">RFC1035</a>]</span> as follows:<a href="#section-7-1" class="pilcrow">¶</a></p>
+<ul class="normal ulEmpty">
+<li class="normal ulEmpty" id="section-7-2.1">
+          <p id="section-7-2.1.1"><code>NSDNAME</code> <span class="bcp14">MAY</span> be specified as a single, zero-length label. An
+NS RRSet that consists of a single NS resource record with empty
+<code>NSDNAME</code> is used to indicate that a zone cut exists without
+providing any authoritative nameservers for the child zone. The
+purpose of such an RRSet is to confirm that the child zone
+exists, but in a different namespace from the parent (e.g. in a
+private namespace).<a href="#section-7-2.1.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
+</section>
+</div>
+<div id="other_uses">
+<section id="section-8">
+      <h2 id="name-other-uses-of-the-empty-nam">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-other-uses-of-the-empty-nam" class="section-name selfRef">Other Uses of the Empty Name in the DNS</a>
+      </h2>
+<p id="section-8-1">In <span>[<a href="#RFC7505" class="cite xref">RFC7505</a>]</span> an MX resource record with an empty target (called
+<code>EXCHANGE</code> in <span>[<a href="#RFC1035" class="cite xref">RFC1035</a>]</span>) is specified to mean that the corresponding
+domain name does not accept e-mail. In effect, the empty field is
+used to indicate that there is no host available to use for e-mail
+delivery.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-2">In <span>[<a href="#RFC2782" class="cite xref">RFC2782</a>]</span> an SRV 'Target of "." means that the service is
+decidedly not available at this domain.'<a href="#section-8-2" class="pilcrow">¶</a></p>
+<p id="section-8-3"><span>[<a href="#RFC9460" class="cite xref">RFC9460</a>], <a href="https://rfc-editor.org/rfc/rfc9460#section-2.5" class="relref">Section 2.5</a></span> notes that 'For AliasMode SVCB RRs, a
+TargetName of "." indicates that the service is not available or
+does not exist.'<a href="#section-8-3" class="pilcrow">¶</a></p>
+<p id="section-8-4">These uses of the empty name are conceptually consistent with the
+meaning defined in this document: that using an empty name is to
+be interpreted as the corresponding function not being available.<a href="#section-8-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="operational-considerations">
+<section id="section-9">
+      <h2 id="name-operational-considerations">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-operational-considerations" class="section-name selfRef">Operational Considerations</a>
+      </h2>
+<p id="section-9-1">The empty name is not known to have been widely used as an NS target,
+although it has been used with other resource records, as described
+in <a href="#other_uses" class="auto internal xref">Section 8</a>. It is a reasonable concern that if delegations
+to nowhere became prevalent, or if names related to such zone cuts
+were associated with significant traffic, some operational problem
+might result. For example, DNS software that made incompatible
+assumptions about DNS responses might fail, or harmful traffic to
+root servers might result.<a href="#section-9-1" class="pilcrow">¶</a></p>
+<p id="section-9-2">Some experiments carried out by the authors to assess the likelihood
+of such problems are described in <a href="#experiments" class="auto internal xref">Appendix A</a>. The results of
+those experiments do not suggest that the widespread use of delegations
+to nowhere would lead to operational problems.<a href="#section-9-2" class="pilcrow">¶</a></p>
+<p id="section-9-3">Many organizations have a private namespace that is not mirrored on the
+outside, except, partially and temporarily, when deploying TXT records
+for ACME DNS-01 validation to obtain certificates for internal usage
+from one of the common WebPKI CAs. Organizations with such a setup
+cannot use the delegation to nowhere.<a href="#section-9-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-10">
+      <h2 id="name-security-considerations">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-10-1">By explicitly signalling the existence of a private child zone, this mechanism
+prevents DNSSEC-aware resolvers from erroneously caching authenticated denial
+of existence (NSEC/NSEC3) records from the global namespace for private
+subdomains. This allows a roaming, DNSSEC-aware resolver to maintain a
+consistent chain of trust regardless of its vantage point. Consequently, this
+unambiguous configuration offers better security and operational stability than
+relying on split-horizon architectures without explicit parent-side signalling.<a href="#section-10-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-11">
+      <h2 id="name-iana-considerations">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-11-1">This document has no IANA actions.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<p id="section-11-2">The example of the designated top-level domain <code>INTERNAL</code> being
+provisioned as a delegation of <code>INTERNAL</code> to nowhere from the root
+zone was intentionally chosen in order to make it clear that such
+a configuration is allowed, is consistent with this specification
+and facilitates the use of private namespaces named under such a
+top-level domain with less ambiguity than might otherwise occur.
+This document does not provide any operational direction to the
+IANA, however.<a href="#section-11-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-combined-references">
+<section id="section-12">
+      <h2 id="name-references">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<div id="sec-normative-references">
+<section id="section-12.1">
+        <h3 id="name-normative-references">
+<a href="#section-12.1" class="section-number selfRef">12.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC1034">[RFC1034]</dt>
+        <dd>
+<span class="refAuthor">Mockapetris, P.</span>, <span class="refTitle">"Domain names - concepts and facilities"</span>, <span class="seriesInfo">STD 13</span>, <span class="seriesInfo">RFC 1034</span>, <span class="seriesInfo">DOI 10.17487/RFC1034</span>, <time datetime="1987-11" class="refDate">November 1987</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc1034">https://www.rfc-editor.org/rfc/rfc1034</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC1035">[RFC1035]</dt>
+        <dd>
+<span class="refAuthor">Mockapetris, P.</span>, <span class="refTitle">"Domain names - implementation and specification"</span>, <span class="seriesInfo">STD 13</span>, <span class="seriesInfo">RFC 1035</span>, <span class="seriesInfo">DOI 10.17487/RFC1035</span>, <time datetime="1987-11" class="refDate">November 1987</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc1035">https://www.rfc-editor.org/rfc/rfc1035</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2119">https://www.rfc-editor.org/rfc/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC4033">[RFC4033]</dt>
+        <dd>
+<span class="refAuthor">Arends, R.</span>, <span class="refAuthor">Austein, R.</span>, <span class="refAuthor">Larson, M.</span>, <span class="refAuthor">Massey, D.</span>, and <span class="refAuthor">S. Rose</span>, <span class="refTitle">"DNS Security Introduction and Requirements"</span>, <span class="seriesInfo">RFC 4033</span>, <span class="seriesInfo">DOI 10.17487/RFC4033</span>, <time datetime="2005-03" class="refDate">March 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc4033">https://www.rfc-editor.org/rfc/rfc4033</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8174">https://www.rfc-editor.org/rfc/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9499">[RFC9499]</dt>
+      <dd>
+<span class="refAuthor">Hoffman, P.</span> and <span class="refAuthor">K. Fujiwara</span>, <span class="refTitle">"DNS Terminology"</span>, <span class="seriesInfo">BCP 219</span>, <span class="seriesInfo">RFC 9499</span>, <span class="seriesInfo">DOI 10.17487/RFC9499</span>, <time datetime="2024-03" class="refDate">March 2024</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9499">https://www.rfc-editor.org/rfc/rfc9499</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="sec-informative-references">
+<section id="section-12.2">
+        <h3 id="name-informative-references">
+<a href="#section-12.2" class="section-number selfRef">12.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="Byrne1985">[Byrne1985]</dt>
+        <dd>
+<span class="refAuthor">Byrne, D.</span>, <span class="refTitle">"Road to Nowhere"</span>, <span class="refContent">from the album "Little Creatures", Sire Records</span>, <time datetime="1985-06-03" class="refDate">3 June 1985</time>. </dd>
+<dd class="break"></dd>
+<dt id="Hardaker2026">[Hardaker2026]</dt>
+        <dd>
+<span class="refAuthor">Hardaker, W.</span>, <span class="refTitle">"Analyzing .internal to .dot"</span>, <span class="refContent">https://ant.isi.edu/~hardaker/papers/2026-04-27-analyzing-dot-internal-to-dot.pdf</span>, <time datetime="2026-04-27" class="refDate">27 April 2026</time>. </dd>
+<dd class="break"></dd>
+<dt id="IEPG-IETF125">[IEPG-IETF125]</dt>
+        <dd>
+<span class="refTitle">"IEPG @ IETF 125 Meeting Recording"</span>, <span class="refContent">https://youtu.be/fGZj3SWi-OI?t=1772</span>, <span>n.d.</span>. </dd>
+<dd class="break"></dd>
+<dt id="Powers2006">[Powers2006]</dt>
+        <dd>
+<span class="refAuthor">Powers, T.</span>, <span class="refTitle">"Three Days to Never"</span>, <span class="refContent">William Morrow &amp; Company, ISBN 978-0380976539</span>, <time datetime="2006-08-08" class="refDate">8 August 2006</time>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2782">[RFC2782]</dt>
+        <dd>
+<span class="refAuthor">Gulbrandsen, A.</span>, <span class="refAuthor">Vixie, P.</span>, and <span class="refAuthor">L. Esibov</span>, <span class="refTitle">"A DNS RR for specifying the location of services (DNS SRV)"</span>, <span class="seriesInfo">RFC 2782</span>, <span class="seriesInfo">DOI 10.17487/RFC2782</span>, <time datetime="2000-02" class="refDate">February 2000</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2782">https://www.rfc-editor.org/rfc/rfc2782</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC6762">[RFC6762]</dt>
+        <dd>
+<span class="refAuthor">Cheshire, S.</span> and <span class="refAuthor">M. Krochmal</span>, <span class="refTitle">"Multicast DNS"</span>, <span class="seriesInfo">RFC 6762</span>, <span class="seriesInfo">DOI 10.17487/RFC6762</span>, <time datetime="2013-02" class="refDate">February 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc6762">https://www.rfc-editor.org/rfc/rfc6762</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7505">[RFC7505]</dt>
+        <dd>
+<span class="refAuthor">Levine, J.</span> and <span class="refAuthor">M. Delany</span>, <span class="refTitle">"A "Null MX" No Service Resource Record for Domains That Accept No Mail"</span>, <span class="seriesInfo">RFC 7505</span>, <span class="seriesInfo">DOI 10.17487/RFC7505</span>, <time datetime="2015-06" class="refDate">June 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7505">https://www.rfc-editor.org/rfc/rfc7505</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9460">[RFC9460]</dt>
+        <dd>
+<span class="refAuthor">Schwartz, B.</span>, <span class="refAuthor">Bishop, M.</span>, and <span class="refAuthor">E. Nygren</span>, <span class="refTitle">"Service Binding and Parameter Specification via the DNS (SVCB and HTTPS Resource Records)"</span>, <span class="seriesInfo">RFC 9460</span>, <span class="seriesInfo">DOI 10.17487/RFC9460</span>, <time datetime="2023-11" class="refDate">November 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9460">https://www.rfc-editor.org/rfc/rfc9460</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9476">[RFC9476]</dt>
+      <dd>
+<span class="refAuthor">Kumari, W.</span> and <span class="refAuthor">P. Hoffman</span>, <span class="refTitle">"The .alt Special-Use Top-Level Domain"</span>, <span class="seriesInfo">RFC 9476</span>, <span class="seriesInfo">DOI 10.17487/RFC9476</span>, <time datetime="2023-09" class="refDate">September 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9476">https://www.rfc-editor.org/rfc/rfc9476</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="experiments">
+<section id="appendix-A">
+      <h2 id="name-experiments">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-experiments" class="section-name selfRef">Experiments</a>
+      </h2>
+<p id="appendix-A-1">Please see <span>[<a href="#Hardaker2026" class="cite xref">Hardaker2026</a>]</span> for some real world testing of the use of
+delegations to nowhere, and the IEPG recording of the discussion:
+<span>[<a href="#IEPG-IETF125" class="cite xref">IEPG-IETF125</a>]</span>.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="acknowledgments">
+<section id="appendix-B">
+      <h2 id="name-acknowledgments">
+<a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="appendix-B-1">The phrase "delegation to nowhere" was inspired by the misremebered
+title of a novel by Tim Powers entitled "Two Days to Nowhere", in
+which characters deal with ambiguous realities by way of supernatural
+sensitivity, time travel and alcohol.  This seemed like a good
+metaphor for the problem of provisioning overlapping namespaces in
+the DNS.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<p id="appendix-B-2">Unfortunately, it appears that Tim Powers wrote no such book,
+although he did publish the similarly-named novel "Three Days to
+Never" <span>[<a href="#Powers2006" class="cite xref">Powers2006</a>]</span> which is perhaps what I was thinking of. And
+it's certainly true that much of his writing features ambiguity,
+the supernatural and excessive drinking. Memory is a tricky thing.<a href="#appendix-B-2" class="pilcrow">¶</a></p>
+<p id="appendix-B-3">The song "Road to Nowhere" <span>[<a href="#Byrne1985" class="cite xref">Byrne1985</a>]</span> from the 1985 Talking Heads
+album "Little Creatures" would perhaps have been a better inspiration
+for the terminology.  It's a shame that's not what happened.<a href="#appendix-B-3" class="pilcrow">¶</a></p>
+<p id="appendix-B-4">The authors stand ready to acknowledge all contributions from their friends and
+colleagues. These include, but are not limited to, the following people: Mark
+Andrews, Ray Bellis, Steve Crocker, Peter van Dijk, Ross Gibson, Paul Hoffman,
+Geoff Huston, Philip Homburg, Eberhard Lisse, Ted Lemon, Andrew McConachie,
+Scott Morizot, Benno Overeinder, Libor Peltan, Petr Špaček, Michael Richardson,
+Michael De Roover, Ondřej Surý, and Peter Thomassen. At least one of the
+authors has a staggeringly bad memory for names, faces, and life in general, so
+if you contributed and your name is not listed here, please accept our
+apologies and let us know so we can correct the oversight.<a href="#appendix-B-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-C">
+      <h2 id="name-authors-addresses">
+<a href="#name-authors-addresses" class="section-name selfRef">Authors' Addresses</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Joe Abley</span></div>
+<div dir="auto" class="left"><span class="org">Cloudflare</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:jabley@cloudflare.com" class="email">jabley@cloudflare.com</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Wes Hardaker</span></div>
+<div dir="auto" class="left"><span class="org">USC/ISI</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:ietf@hardakers.net" class="email">ietf@hardakers.net</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Warren Kumari</span></div>
+<div dir="auto" class="left"><span class="org">Google, Inc.</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:warren@kumari.net" class="email">warren@kumari.net</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>
