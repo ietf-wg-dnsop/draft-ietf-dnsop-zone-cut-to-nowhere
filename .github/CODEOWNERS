@@ -1,0 +1,3 @@
+# Automatically generated CODEOWNERS
+# Regenerate with `make update-codeowners`
+draft-ietf-dnsop-zone-cut-to-nowhere.md jabley@cloudflare.com ietf@hardakers.net warren@kumari.net
