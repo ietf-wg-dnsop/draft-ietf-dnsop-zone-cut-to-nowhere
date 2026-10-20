@@ -6,9 +6,11 @@ Domain Name System Operations                                   J. Abley
 Internet-Draft                                                Cloudflare
 Updates: RFC1035 (if approved)                               W. Hardaker
 Intended status: Standards Track                                 USC/ISI
-Expires: 27 March 2027                                         W. Kumari
+Expires: 23 April 2027                                         W. Kumari
                                                             Google, Inc.
-                                                       23 September 2026
+                                                            P. Thomassen
+                                                              deSEC, SSE
+                                                         20 October 2026
 
 
               Signalling a Zone Cut to Nowhere in the DNS
@@ -27,11 +29,11 @@ About This Document
 
    This note is to be removed before publishing as an RFC.
 
-   The latest revision of this draft can be found at
-   https://ableyjoe.github.io/draft-jabley-dnsop-zone-cut-to-nowhere/
-   draft-jabley-dnsop-zone-cut-to-nowhere.html.  Status information for
-   this document may be found at https://datatracker.ietf.org/doc/draft-
-   ietf-dnsop-zone-cut-to-nowhere/.
+   The latest revision of this draft can be found at https://ietf-wg-
+   dnsop.github.io/draft-ietf-dnsop-zone-cut-to-nowhere/draft-ietf-
+   dnsop-zone-cut-to-nowhere.html.  Status information for this document
+   may be found at https://datatracker.ietf.org/doc/draft-ietf-dnsop-
+   zone-cut-to-nowhere/.
 
    Discussion of this document takes place on the Domain Name System
    Operations Working Group mailing list (mailto:dnsop@ietf.org), which
@@ -39,7 +41,8 @@ About This Document
    Subscribe at https://www.ietf.org/mailman/listinfo/dnsop/.
 
    Source for this draft and an issue tracker can be found at
-   https://github.com/ableyjoe/draft-jabley-dnsop-zone-cut-to-nowhere.
+   https://github.com/ietf-wg-dnsop/draft-ietf-dnsop-zone-cut-to-
+   nowhere.
 
 Status of This Memo
 
@@ -56,7 +59,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 27 March 2027.
+   This Internet-Draft will expire on 23 April 2027.
 
 Copyright Notice
 
@@ -574,3 +577,8 @@ Authors' Addresses
    Warren Kumari
    Google, Inc.
    Email: warren@kumari.net
+
+
+   Peter Thomassen
+   deSEC, SSE
+   Email: peter@desec.io
