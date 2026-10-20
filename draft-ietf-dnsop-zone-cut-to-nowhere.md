@@ -39,6 +39,10 @@ author:
     fullname: Warren Kumari
     organization: Google, Inc.
     email: warren@kumari.net
+ -
+    fullname: Peter Thomassen
+    organization: deSEC, SSE
+    email: peter@desec.io
 
 normative:
 
